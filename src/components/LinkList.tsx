@@ -6,9 +6,10 @@ type Props = {
   articles: IArticle[]
   setArticle: Dispatch<SetStateAction<IArticle>>
   isLoading: boolean
+  setCustomError: Dispatch<SetStateAction<string>>
 }
 
-const LinkList: FC<Props> = ({ articles, setArticle, isLoading }) => {
+const LinkList: FC<Props> = ({ articles, setArticle, isLoading, setCustomError }) => {
   const [copied, setCopied] = useState('')
 
   function handleCopy(url: string) {
@@ -20,12 +21,19 @@ const LinkList: FC<Props> = ({ articles, setArticle, isLoading }) => {
     }, 2000)
   }
 
+  function handleSetArticle(article: IArticle) {
+    if (isLoading) return
+
+    setCustomError('')
+    setArticle(article)
+  }
+
   return (
     <>
       {articles.map((singleArticle, i) => (
         <div
           key={`item-${i}`}
-          onClick={() => !isLoading && setArticle(singleArticle)}
+          onClick={() => handleSetArticle(singleArticle)}
           className="link_card"
         >
           <div

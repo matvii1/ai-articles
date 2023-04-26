@@ -2,6 +2,7 @@ import { useLazyGetSummaryQuery } from '@/api/article-api'
 import { ChangeEvent, FC, FormEvent, useEffect, useState } from 'react'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import { useLocalStorage } from 'usehooks-ts'
 import Error from './Error'
 import Form from './Form'
 import LinkList from './LinkList'
@@ -13,34 +14,29 @@ export interface IArticle {
 }
 
 const Demo: FC = () => {
-  const [getSummary, { isLoading, error }] = useLazyGetSummaryQuery()
+  const [getSummary, { isFetching, error }] = useLazyGetSummaryQuery()
   const [customError, setCustomError] = useState('')
 
-  const [allArticles, setAllArticles] = useState<IArticle[]>([
-    {
-      url: '',
-      summary: '',
-    },
-  ])
-  const [article, setArticle] = useState<IArticle>({
+  const [allArticles, setAllArticles] = useLocalStorage<IArticle[]>(
+    'allArticles',
+    [
+      {
+        url: '',
+        summary: '',
+      },
+    ]
+  )
+  const [article, setArticle] = useLocalStorage<IArticle>('currentArticle', {
     url: '',
     summary: '',
   })
 
   useEffect(() => {
-    const articlesFromLocalStorage = JSON.parse(
-      localStorage.getItem('articles') || '[]'
-    )
-
-    if (articlesFromLocalStorage) {
-      setAllArticles(articlesFromLocalStorage)
+    if (error) {
+      setCustomError(
+        'Failed extracting text corpus from the page. Make sure you are trying to summarize a news article or another page with clearly defined blocks of text.'
+      )
     }
-  }, [])
-
-  useEffect(() => {
-    setCustomError(
-      'Failed extracting text corpus from the page. Make sure you are trying to summarize a news article or another page with clearly defined blocks of text.'
-    )
   }, [error])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -49,8 +45,6 @@ const Demo: FC = () => {
 
     try {
       const foundArticle = allArticles.find((el) => el.url === article.url)
-
-      console.log(foundArticle)
 
       if (foundArticle) {
         setArticle({ ...article, summary: foundArticle.summary })
@@ -62,12 +56,9 @@ const Demo: FC = () => {
 
       if (data?.summary) {
         const newArticle = { ...article, summary: data.summary }
+
         setArticle(newArticle)
-
-        const updatedArticles = [newArticle, ...allArticles]
-        setAllArticles(updatedArticles)
-
-        localStorage.setItem('articles', JSON.stringify(updatedArticles))
+        setAllArticles([newArticle, ...allArticles])
       }
     } catch (error) {
       toast.error('Something went wrong!')
@@ -75,7 +66,7 @@ const Demo: FC = () => {
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    if (isLoading) {
+    if (isFetching) {
       return
     }
 
@@ -110,19 +101,20 @@ const Demo: FC = () => {
         <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
           {!!filteredArticles.length && (
             <LinkList
-              isLoading={isLoading}
+              isLoading={isFetching}
               articles={filteredArticles}
               setArticle={setArticle}
+              setCustomError={setCustomError}
             />
           )}
         </div>
       </div>
 
-      {isLoading && <Loader />}
+      {isFetching && <Loader />}
 
-      {!isLoading && !!customError && <Error errorText={customError} />}
+      {!isFetching && !!customError && <Error errorText={customError} />}
 
-      {article.summary && !isLoading && !customError && (
+      {article && article.summary && !isFetching && !customError && (
         <div className="flex flex-col gap-2 my-10">
           <h2 className="font-satoshi font-bold text-gray-600 text-xl">
             Article <span className="blue_gradient">Summary</span>
